@@ -26,16 +26,18 @@ export function renderMarkdown(result) {
     '',
   );
 
+  if (result.baseline) lines.push(`Baseline: ${result.baseline.new} new, ${result.baseline.unchanged} unchanged, ${result.baseline.fixed.length} fixed checks.`, '');
   lines.push('## Findings', '');
   if (result.findings.length === 0) {
     lines.push('No issues found.', '');
   }
-  for (const f of result.findings) {
+  for (const f of [...result.findings, ...(result.baseline?.fixed || [])]) {
     lines.push(`### [${f.severity.toUpperCase()}] ${f.title} (${f.id})`, '');
+    if (f.status) lines.push(`Baseline status: ${f.status}.`, '');
     lines.push(`Category: ${scores.categories[f.category].label}. Affected: ${f.affected.length}.`, '');
     lines.push(`How to fix: ${f.fix}`, '');
     for (const a of f.affected.slice(0, MAX_AFFECTED)) {
-      lines.push(`- ${a.url}: ${a.evidence}`);
+      lines.push(`- ${a.status ? `[${a.status}] ` : ''}${a.url}: ${a.evidence}`);
     }
     if (f.affected.length > MAX_AFFECTED) {
       lines.push(`- and ${f.affected.length - MAX_AFFECTED} more`);
@@ -46,7 +48,7 @@ export function renderMarkdown(result) {
   lines.push('## Pages', '');
   lines.push('| URL | Status | Size | Time | Title |', '| --- | ---: | ---: | ---: | --- |');
   for (const p of result.pages) {
-    lines.push(`| ${cell(p.url)} | ${p.status} | ${formatBytes(p.bytes)} | ${p.timeMs} ms | ${cell(p.title)} |`);
+    lines.push(`| ${cell(p.url)} | ${p.status} | ${formatBytes(p.bytes)} | ${p.timeMs} ms | ${cell(p.title)}${p.truncated ? ' (body truncated)' : ''} |`);
   }
   lines.push('');
   return lines.join('\n');

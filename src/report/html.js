@@ -36,6 +36,8 @@ ul{padding-left:20px;margin:6px 0}li{margin:4px 0;word-break:break-word}
 code{font:.85em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);word-break:break-word}
+:focus-visible{outline:3px solid var(--info);outline-offset:3px}
+@media print{:root{--bg:#fff;--fg:#000;--muted:#333;--card:#fff;--line:#999}main{max-width:none;padding:0}.finding{break-inside:avoid}details>ul{display:block}table{font-size:10pt}}
 td.num,th.num{text-align:right;white-space:nowrap}
 `;
 
@@ -67,18 +69,20 @@ export function renderHtml(result) {
   }
   out.push('</div>');
 
+  if (result.baseline) out.push(`<p>Baseline: ${result.baseline.new} new, ${result.baseline.unchanged} unchanged, ${result.baseline.fixed.length} fixed checks.</p>`);
   out.push('<h2>Findings</h2>');
   if (result.findings.length === 0) out.push('<p>No issues found.</p>');
-  for (const f of result.findings) {
+  for (const f of [...result.findings, ...(result.baseline?.fixed || [])]) {
     out.push(`<section class="finding ${escapeHtml(f.severity)}">`);
     out.push(
       `<div class="sev ${escapeHtml(f.severity)}">${escapeHtml(f.severity)} &middot; ${escapeHtml(scores.categories[f.category].label)} &middot; <code>${escapeHtml(f.id)}</code></div>`,
     );
+    if (f.status) out.push(`<p>Baseline status: ${escapeHtml(f.status)}</p>`);
     out.push(`<h3>${escapeHtml(f.title)}</h3>`);
     out.push(`<p class="fix"><strong>How to fix:</strong> ${escapeHtml(f.fix)}</p>`);
     out.push(`<details><summary>${f.affected.length} affected</summary><ul>`);
     for (const a of f.affected) {
-      out.push(`<li><code>${escapeHtml(a.url)}</code><br>${escapeHtml(a.evidence)}</li>`);
+      out.push(`<li>${a.status ? `[${escapeHtml(a.status)}] ` : ''}<code>${escapeHtml(a.url)}</code><br>${escapeHtml(a.evidence)}</li>`);
     }
     out.push('</ul></details></section>');
   }
@@ -86,7 +90,7 @@ export function renderHtml(result) {
   out.push('<h2>Pages</h2><table><thead><tr><th>URL</th><th class="num">Status</th><th class="num">Size</th><th class="num">Time</th><th>Title</th></tr></thead><tbody>');
   for (const p of result.pages) {
     out.push(
-      `<tr><td>${escapeHtml(p.url)}</td><td class="num">${p.status}</td><td class="num">${escapeHtml(formatBytes(p.bytes))}</td><td class="num">${p.timeMs} ms</td><td>${escapeHtml(p.title)}</td></tr>`,
+      `<tr><td>${escapeHtml(p.url)}</td><td class="num">${p.status}</td><td class="num">${escapeHtml(formatBytes(p.bytes))}</td><td class="num">${p.timeMs} ms</td><td>${escapeHtml(p.title)}${p.truncated ? ' (body truncated)' : ''}</td></tr>`,
     );
   }
   out.push('</tbody></table></main></body></html>');

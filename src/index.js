@@ -7,3 +7,4 @@ export { parseRobots } from './robots.js';
 export { computeScores } from './score.js';
 export { CATALOG, CATEGORIES } from './catalog.js';
 export { VERSION } from './version.js';
+export { compareBaseline, hasNewFindings } from './baseline.js';

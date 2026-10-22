@@ -194,3 +194,21 @@ describe('errors and edge cases', () => {
     assert.ok(idsOf(result).includes('perf-slow-response'));
   });
 });
+
+for (const childType of ['urlset', 'sitemapindex']) {
+  test(`sitemap index follows same-origin children one level: ${childType}`, async () => {
+    const routes = goodSite();
+    routes['/sitemap.xml'] = (req) => ({ headers: { 'content-type': 'application/xml' }, body: `<sitemapindex><sitemap><loc>http://${req.headers.host}/child.xml</loc></sitemap><sitemap><loc>http://external.test/never.xml</loc></sitemap></sitemapindex>` });
+    routes['/child.xml'] = { headers: { 'content-type': 'application/xml' }, body: `<${childType}><sitemap><loc>/never.xml</loc></sitemap></${childType}>` };
+    const site = await serve(routes);
+    const result = await runAudit(site.url, FAST);
+    assert.ok(site.requests.some((r) => r.path === '/child.xml'));
+    assert.ok(!site.requests.some((r) => r.path === '/never.xml'));
+    assert.ok(!idsOf(result).includes('seo-sitemap-missing'));
+  });
+}
+
+test('missing content-type start page is rejected', async () => {
+  const site = await serve({ '/': { body: '<title>Untyped page</title>' } });
+  await assert.rejects(runAudit(site.url, FAST), /did not return an HTML page/);
+});

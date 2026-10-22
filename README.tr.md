@@ -1,15 +1,38 @@
 # site-audit-lite
 
+[![CI](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 [English](README.md) | [Türkçe](README.tr.md)
 
 Küçük işletme siteleri için hızlı ve neredeyse bağımlılıksız bir site sağlık denetleyicisi. Siteyi tarar; SEO temellerini, erişilebilirlik temellerini, güvenlik başlıklarını, performans ipuçlarını ve kırık bağlantıları kontrol eder, sonucu okunaklı bir HTML, Markdown veya JSON raporu olarak yazar.
+
+Kaynak koddan kurulum: `npm ci`. D?? a?a ??kmayan demo: `node scripts/make-example.mjs`.
 
 Tam bir Lighthouse kurulumuyla uğraşmak ya da bir SaaS aracına ödeme yapmak istemeyen serbest çalışanlar ve site sahipleri için yazıldı. Her bulgunun bir kimliği, önem derecesi, tetikleyen kanıtı ve sade bir dille yazılmış çözüm önerisi vardır.
 
 - Node.js 20 ve üzeri, ESM, yerleşik `fetch` üzerine kurulu.
 - Çalışma zamanı bağımlılığı yok.
-- `robots.txt` kurallarına uyar; sayfa, derinlik ve eşzamanlı istek sayısını sınırlar, istekler arasında kibarca bekler.
+- `robots.txt` kurallarına uyar; sayfa, derinlik ve eşzamanlı istek sayısını sınırlar, istekler arasında bekler.
 - Satır içi CSS'li, açık ve koyu temalı, tek dosyalık HTML raporu.
+
+## Demo
+
+`node scripts/make-example.mjs` sentetik siteyi i?letim sisteminin se?ti?i yerel bir portta denetler. Tekrarlanabilirlik i?in kaydedilen raporda port 8080, s?reler s?f?r g?sterilir. Ger?ek ??kt?n?n ilk sat?rlar?:
+
+```text
+Site audit: http://127.0.0.1:8080
+Score 74/100 (C) across 5 pages
+
+  SEO             44  F
+  Accessibility   87  B
+  Security        80  B
+  Performance     97  A
+  Links           92  A
+
+6 errors, 10 warnings, 12 notices
+```
+
+[HTML raporunu](examples/report.html) veya [Markdown raporunu](examples/report.md) inceleyin.
 
 ## Kurulum
 
@@ -20,18 +43,18 @@ npm install        # yalnızca geliştirme için (test ve lint)
 npm link           # isteğe bağlı: `site-audit` komutunu her yerden çalıştırır
 ```
 
-Bağlamadan da çalıştırabilirsiniz: `node bin/site-audit.js https://example.com`.
+Bağlamadan da çalıştırabilirsiniz: `node bin/site-audit.js http://127.0.0.1:8080`.
 
 ## Kullanım
 
 ```sh
-site-audit https://example.com
-site-audit https://example.com --max-pages 20 --out report.html
-site-audit https://example.com --out report.md --out report.json
-site-audit https://example.com --fail-under 80 --quiet
+site-audit http://127.0.0.1:8080
+site-audit http://127.0.0.1:8080 --max-pages 20 --out report.html
+site-audit http://127.0.0.1:8080 --out report.md --out report.json
+site-audit http://127.0.0.1:8080 --fail-under 80 --quiet
 ```
 
-`example.com` gibi çıplak bir alan adı `https://example.com` olarak kabul edilir.
+`example.com` gibi çıplak bir alan adı `http://127.0.0.1:8080` olarak kabul edilir.
 
 | Seçenek | Varsayılan | Anlamı |
 | --- | --- | --- |
@@ -44,6 +67,9 @@ site-audit https://example.com --fail-under 80 --quiet
 | `--out <dosya>` | yok | Rapor yazar. Biçim uzantıdan belirlenir (`.html`, `.md`, `.json`). Birden fazla kez verilebilir |
 | `--format <biçim>` | uzantıya göre | Tüm `--out` dosyaları için `html`, `md` veya `json` biçimini zorlar |
 | `--fail-under <n>` | yok | Genel puan `n` değerinin altındaysa 1 koduyla çıkar |
+| `--baseline <dosya>` | yok | ?nceki JSON raporuyla kimlik ve URL ?zerinden kar??la?t?r?r |
+| `--fail-on-new <?nem>` | yok | Yeni bulgu bu ?nem d?zeyinde veya ?zerindeyse 1 koduyla ??kar; `--baseline` gerekir (`error`, `warning`, `info`) |
+| `--allow-private` | kapal? | G?venilen hedeflerde ?zel adres engelini kald?r?r; origin s?n?r? korunur |
 | `--verbose` | kapalı | Terminalde çözümleri, kanıtları ve ilerleme iletilerini gösterir |
 | `--quiet` | kapalı | Hata dışında hiçbir şey yazmaz |
 | `--no-color` | otomatik | ANSI renklerini kapatır |
@@ -55,7 +81,7 @@ site-audit https://example.com --fail-under 80 --quiet
 ```js
 import { runAudit, renderHtml } from 'site-audit-lite';
 
-const result = await runAudit('https://example.com', { maxPages: 10 });
+const result = await runAudit('http://127.0.0.1:8080', { maxPages: 10 });
 console.log(result.scores.overall, result.findings.length);
 const html = renderHtml(result);
 ```
@@ -68,6 +94,8 @@ const html = renderHtml(result);
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
+| `seo-hreflang-invalid` | warning | page | Hreflang dil kodu ge?ersiz veya sayfan?n kendisine referans yok |
+| `seo-title-too-generic` | warning | page | Home veya Untitled gibi genel bir ba?l?k |
 | `seo-title-missing` | error | page | Sayfanın başlığı yok |
 | `seo-title-length` | warning | page | Başlık 10 karakterden kısa ya da 60 karakterden uzun |
 | `seo-title-duplicate` | warning | site | Birkaç sayfa aynı başlığı paylaşıyor |
@@ -90,6 +118,8 @@ Bunlar temel ve sezgisel kontrollerdir; elle inceleme yapmanın ya da axe gibi e
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
+| `a11y-heading-order` | warning | page | Ba?l?k d?zeyleri atlan?yor veya ilk ba?l?k h1 de?il |
+| `a11y-button-name-missing` | error | page | D??menin eri?ilebilir ad? yok (sezgisel) |
 | `a11y-lang-missing` | error | page | `<html>` öğesinde `lang` yok |
 | `a11y-img-alt-missing` | error | page | `alt` özniteliği olmayan görseller (boş `alt=""` kabul edilir) |
 | `a11y-form-label-missing` | warning | page | `<label>`, `aria-label`, `aria-labelledby` ya da `title` olmayan form alanları (sezgisel) |
@@ -100,6 +130,7 @@ Bunlar temel ve sezgisel kontrollerdir; elle inceleme yapmanın ya da axe gibi e
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
+| `sec-cookie-flags` | warning | page | Set-Cookie i?inde Secure, HttpOnly veya ge?erli SameSite eksik |
 | `sec-https` | error | site | Site düz HTTP ile sunuluyor |
 | `sec-https-redirect` | warning | site | `http://` adresi `https://` adresine yönlenmiyor |
 | `sec-hsts` | warning | page | `Strict-Transport-Security` yok |
@@ -115,6 +146,7 @@ Yerel geliştirme sunucusunu denetleyebilmeniz için döngü adresleri (`localho
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
+| `perf-no-cache-headers` | info | page | Ayn? sitedeki statik kaynakta Cache-Control ve Expires yok |
 | `perf-page-weight` | warning | page | HTML ile aynı siteden görseller, betikler ve stiller toplamı 1,5 MB'ı aşıyor |
 | `perf-html-size` | info | page | Yalnızca HTML 200 KB'ı aşıyor |
 | `perf-large-image` | warning | page | Aynı siteden 300 KB'ı aşan görsel |
@@ -135,9 +167,19 @@ Boyutlar, çözülmüş HTML gövdesinden ve aynı siteden kaynakların `Content
 
 Yalnızca aynı kaynaktaki (origin) bağlantılar denetlenir. Dış bağlantılara hiçbir zaman istek atılmaz.
 
+## ?rnekler
+
+`node scripts/make-example.mjs` yaln?zca `test/support/fixtures.js` i?indeki sentetik veriyi kullan?r; ger?ek bir siteye istek g?ndermez. [HTML](examples/report.html) ve [Markdown](examples/report.md) raporlar?n? yeniden ?retir. `SITE_AUDIT_NOW` ortam de?i?kenine ISO tarih vererek zaman? sabitleyebilirsiniz; varsay?lan ?rnek zaman? `2026-10-22T00:00:00Z` de?eridir.
+
+## Nas?l ?al???r
+
+?nce robots.txt okunur; ard?ndan sayfalar geni?lik ?ncelikli taran?r. Ayn? origin i?indeki ba?lant? ve kaynaklar kontrol edilir; katalogdaki kontroller kan?t ve ??z?m ?retir. Sayfa b?t?esi link kontrollerini tamamen s?n?rlamaz: ke?fedilen ayn? origin ba?lant?lar? ayr?ca HEAD ile kontrol edilebilir.
+
 ## Puanlama
 
 Her kategori 100 puanla başlar. Başarısız her kontrol önem derecesine göre puan düşürür: hata 20, uyarı 8, bilgi 2. Sayfa kapsamlı bir kontrolün düşüşü, etkilediği sayfa oranıyla ölçeklenir (6 sayfanın 3'ü etkileniyorsa düşüşün yarısı uygulanır); site kapsamlı kontrol her zaman tam düşer. Kategori puanı 0 ile 100 arasında tutulur.
+
+Katalogdaki 44 kontrol?n tamam? bu kurala tabidir; yeni kontroller de tablolarda belirtilen ?nem derecesini ve sayfa kapsam?n? kullan?r.
 
 Genel puan, kategori puanlarının ağırlıklı ortalamasıdır:
 
@@ -173,6 +215,10 @@ npm run lint
 ```
 
 Bkz. [CONTRIBUTING.md](CONTRIBUTING.md). Güvenlik bildirimleri için: [SECURITY.md](SECURITY.md).
+
+## Katk?da bulunma
+
+Kurulum, katk? kurallar? ve s?r?m ??karma i?in [CONTRIBUTING.md](CONTRIBUTING.md); davran?? kurallar? i?in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Lisans
 

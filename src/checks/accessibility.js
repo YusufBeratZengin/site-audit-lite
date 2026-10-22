@@ -3,6 +3,10 @@
 export function checkAccessibility(page) {
   const { doc } = page;
   const out = [];
+  if (doc.headings?.some((level, i, levels) => level > (i ? levels[i - 1] : 0) + 1)) {
+    out.push({ id: 'a11y-heading-order', evidence: `Heading levels skip a level: ${doc.headings.join(', ')}.` });
+  }
+  if (doc.unnamedButtons?.length) out.push({ id: 'a11y-button-name-missing', evidence: `${doc.unnamedButtons.length} buttons have no accessible name (heuristic).` });
 
   if (!doc.lang) {
     out.push({ id: 'a11y-lang-missing', evidence: 'The <html> element has no lang attribute.' });

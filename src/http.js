@@ -1,3 +1,7 @@
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+import { isPrivateHost, sameOrigin } from './url.js';
+
 // Thin wrapper around global fetch: manual redirects, timeouts, size caps,
 // and a throttle so the crawler stays polite.
 
@@ -32,6 +36,7 @@ export class Throttle {
 function headersToObject(headers) {
   const out = {};
   for (const [key, value] of headers.entries()) out[key.toLowerCase()] = value;
+  if (headers.getSetCookie) out['set-cookie'] = headers.getSetCookie();
   return out;
 }
 
@@ -44,9 +49,10 @@ async function readLimited(response, maxBytes) {
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    bytes += value.length;
-    chunks.push(value);
-    if (bytes > maxBytes) {
+    const remaining = maxBytes - bytes;
+    chunks.push(value.subarray(0, remaining));
+    bytes += Math.min(value.length, remaining);
+    if (value.length > remaining) {
       truncated = true;
       await reader.cancel();
       break;
@@ -73,24 +79,62 @@ export async function request(url, options = {}) {
     anyType = false,
     maxBytes = 2 * 1024 * 1024,
     throttle = null,
+    startUrl = url,
+    allowPrivate = false,
+    fetchImpl = fetch,
+    lookupHost = lookup,
+    wait = sleep,
+    now = Date.now,
   } = options;
 
   const started = Date.now();
   const redirects = [];
   let current = url;
+  let retried = false;
   try {
+    const startHost = new URL(startUrl).hostname;
+    let privateAllowed = allowPrivate || isPrivateHost(startHost);
+    if (!privateAllowed && !isIP(startHost)) {
+      const addresses = await lookupHost(startHost, { all: true });
+      privateAllowed = addresses.some(({ address }) => isPrivateHost(address));
+    }
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const target = new URL(current);
+      if (!['http:', 'https:'].includes(target.protocol)) throw new Error('Only HTTP(S) redirects are allowed');
+      if (!privateAllowed) {
+        if (isPrivateHost(target.hostname)) throw new Error('Refusing private address; use --allow-private for a trusted target');
+        if (!isIP(target.hostname) && (hop > 0 || target.hostname !== startHost)) {
+          const addresses = await lookupHost(target.hostname, { all: true });
+          if (addresses.some(({ address }) => isPrivateHost(address))) throw new Error('Refusing hostname resolving to a private address');
+        }
+      }
+      // Redirects may upgrade HTTP to HTTPS on the same host; other origins are never fetched.
+      if (!sameOrigin(current, url) && !(new URL(url).protocol === 'http:' && target.protocol === 'https:' && target.hostname === new URL(url).hostname && !target.port)) {
+        throw new Error('Refusing cross-origin redirect');
+      }
       if (throttle) await throttle.wait();
-      const response = await fetch(current, {
+      const response = await fetchImpl(current, {
         method,
         redirect: 'manual',
         headers: { 'user-agent': userAgent, accept: 'text/html,application/xhtml+xml,*/*;q=0.8' },
         signal: AbortSignal.timeout(timeoutMs),
       });
       const headers = headersToObject(response.headers);
+      if ([429, 503].includes(response.status) && headers['retry-after'] && !retried) {
+        const raw = headers['retry-after'].trim();
+        const delay = /^\d+$/.test(raw) ? Number(raw) * 1000 : Date.parse(raw) - now();
+        if (Number.isFinite(delay) && delay >= 0 && delay <= 30000) {
+          await response.body?.cancel();
+          await wait(delay);
+          retried = true;
+          hop--;
+          continue;
+        }
+      }
       const location = headers.location;
       if (response.status >= 300 && response.status < 400 && location) {
         await response.body?.cancel();
+        if (hop === MAX_REDIRECTS) return failure(url, current, redirects, started, 'Too many redirects');
         const next = new URL(location, current).href;
         redirects.push({ from: current, to: next, status: response.status });
         current = next;

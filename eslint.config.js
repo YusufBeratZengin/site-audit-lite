@@ -4,6 +4,7 @@ const nodeGlobals = {
   process: 'readonly',
   console: 'readonly',
   URL: 'readonly',
+  Headers: 'readonly',
   URLSearchParams: 'readonly',
   fetch: 'readonly',
   AbortSignal: 'readonly',

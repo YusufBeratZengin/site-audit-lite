@@ -134,6 +134,9 @@ export function scan(html) {
     openGraph: {},
     hasStructuredData: false,
     h1: [],
+    headings: [],
+    hreflangs: [],
+    unnamedButtons: [],
     headingCount: 0,
     images: [],
     links: [],
@@ -152,6 +155,7 @@ export function scan(html) {
   let titleBuf = '';
   let h1Buf = null;
   let anchor = null;
+  let button = null;
   let labelDepth = 0;
   const labelFor = new Set();
   const controls = [];
@@ -161,6 +165,7 @@ export function scan(html) {
       if (inTitle) titleBuf += t.text;
       if (h1Buf !== null && !t.raw) h1Buf += t.text;
       if (anchor && !t.raw) anchor.text += t.text;
+      if (button && !t.raw) button.text += t.text;
       continue;
     }
     if (t.type === 'close') {
@@ -183,6 +188,10 @@ export function scan(html) {
             if (!collapse(anchor.text) && !anchor.labelled) doc.emptyLinks.push(anchor.href);
             anchor = null;
           }
+          break;
+        case 'button':
+          if (button && !collapse(button.text) && !button.labelled) doc.unnamedButtons.push('button');
+          button = null;
           break;
         case 'label': labelDepth = Math.max(0, labelDepth - 1); break;
         default:
@@ -214,6 +223,7 @@ export function scan(html) {
       }
       case 'link': {
         const rel = (attrs.rel || '').toLowerCase().split(/\s+/).filter(Boolean);
+        if (rel.includes('alternate') && attrs.hreflang !== undefined) doc.hreflangs.push({ code: attrs.hreflang, href: attrs.href || '' });
         if (rel.includes('canonical') && doc.canonical === null) doc.canonical = attrs.href ?? '';
         if (rel.includes('stylesheet') && attrs.href) doc.stylesheets.push(attrs.href);
         if (rel.includes('icon') && attrs.href) doc.icons.push(attrs.href);
@@ -231,10 +241,12 @@ export function scan(html) {
         break;
       case 'h1':
         doc.headingCount++;
+        doc.headings.push(Number(name[1]));
         h1Buf = '';
         break;
       case 'h2': case 'h3': case 'h4': case 'h5': case 'h6':
         doc.headingCount++;
+        doc.headings.push(Number(name[1]));
         break;
       case 'img':
         doc.images.push({
@@ -246,6 +258,10 @@ export function scan(html) {
           ariaHidden: attrs['aria-hidden'],
         });
         if (anchor && (attrs.alt ?? '').trim()) anchor.labelled = true;
+        if (button && (attrs.alt ?? '').trim()) button.labelled = true;
+        break;
+      case 'button':
+        button = { text: '', labelled: Boolean((attrs['aria-label'] || attrs['aria-labelledby'] || attrs.title || '').trim()) };
         break;
       case 'iframe':
         if (attrs.src) doc.iframes.push(attrs.src);
@@ -266,6 +282,11 @@ export function scan(html) {
         break;
       case 'input': case 'select': case 'textarea': {
         const type = (attrs.type || 'text').toLowerCase();
+        if (name === 'input' && ['button', 'submit', 'reset', 'image'].includes(type)) {
+          const label = attrs['aria-label'] || attrs['aria-labelledby'] || attrs.title
+            || (type === 'image' ? attrs.alt : attrs.value) || (['submit', 'reset'].includes(type) ? type : '');
+          if (!label.trim()) doc.unnamedButtons.push(`input[type=${type}]`);
+        }
         if (name === 'input' && NON_LABELLED_INPUT_TYPES.has(type)) break;
         controls.push({
           tag: name,
@@ -281,6 +302,7 @@ export function scan(html) {
     }
   }
 
+  if (button && !collapse(button.text) && !button.labelled) doc.unnamedButtons.push('button');
   doc.formControls = controls;
   doc.unlabelledControls = controls.filter(
     (c) => !c.wrapped && !c.named && !(c.id && labelFor.has(c.id)),

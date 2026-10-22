@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { compareBaseline, hasNewFindings } from '../src/baseline.js';
 import { CATALOG } from '../src/catalog.js';
 import { renderHtml, escapeHtml } from '../src/report/html.js';
 import { renderMarkdown } from '../src/report/markdown.js';
@@ -69,4 +70,36 @@ test('empty findings render a clean report', () => {
 test('escapeHtml handles non-strings', () => {
   assert.equal(escapeHtml(null), '');
   assert.equal(escapeHtml(5), '5');
+});
+
+test('baseline diff tracks added, removed and unchanged affected URLs without changing inputs', () => {
+  const previous = sample();
+  const next = sample();
+  next.findings = [
+    { ...CATALOG['seo-title-missing'], affected: [{ url: previous.findings[0].affected[0].url, evidence: 'updated evidence' }, { url: 'https://e.test/new', evidence: 'missing' }] },
+    { ...CATALOG['a11y-lang-missing'], affected: [{ url: 'https://e.test/', evidence: 'missing' }] },
+  ];
+  const diff = compareBaseline(next, previous);
+  assert.deepEqual(diff.findings[0].affected.map((a) => a.status), ['unchanged', 'new']);
+  assert.equal(diff.baseline.fixed[0].id, 'sec-csp');
+  assert.equal(diff.baseline.fixed[0].affected.length, 12);
+  assert.ok(hasNewFindings(diff, 'error'));
+  assert.equal(previous.findings[0].status, undefined);
+  assert.equal(next.findings[0].status, undefined);
+  for (const render of [renderHtml, renderMarkdown]) {
+    const report = render(diff);
+    for (const status of ['new', 'fixed', 'unchanged']) assert.ok(report.includes(status));
+  }
+  assert.equal(hasNewFindings(compareBaseline(previous, previous)), false);
+  const warningOnly = compareBaseline({ ...next, findings: [previous.findings[1]] }, { findings: [] });
+  assert.equal(hasNewFindings(warningOnly, 'error'), false);
+  assert.equal(hasNewFindings(warningOnly, 'warning'), true);
+});
+
+test('HTML has no active or remote resources and supports focus and print', () => {
+  const html = renderHtml(sample());
+  assert.doesNotMatch(html, /<script|src=["']http|(?:src|href)=["'](?:https?:)?\/\//i);
+  assert.match(html, /:focus-visible/);
+  assert.match(html, /prefers-color-scheme/);
+  assert.match(html, /@media print/);
 });

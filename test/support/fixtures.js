@@ -54,9 +54,9 @@ export function goodSite() {
     }),
     '/sitemap.xml': { headers: { 'content-type': 'application/xml' }, body: '<urlset></urlset>' },
     '/favicon.ico': { headers: { 'content-type': 'image/x-icon' }, body: 'icon' },
-    '/style.css': { headers: { 'content-type': 'text/css' }, body: 'body{margin:0}' },
-    '/app.js': { headers: { 'content-type': 'text/javascript' }, body: 'void 0;' },
-    '/logo.png': { headers: { 'content-type': 'image/png' }, body: PNG },
+    '/style.css': { headers: { 'content-type': 'text/css', 'cache-control': 'public, max-age=3600' }, body: 'body{margin:0}' },
+    '/app.js': { headers: { 'content-type': 'text/javascript', 'cache-control': 'public, max-age=3600' }, body: 'void 0;' },
+    '/logo.png': { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600' }, body: PNG },
     '/private': { headers: SECURE_HEADERS, body: goodPage('Private') },
   };
 }
@@ -88,7 +88,7 @@ export function badSite() {
     '/dup2': { headers: { 'content-type': 'text/html' }, body: '<html lang="en"><head><title>Same title here</title></head><body><h1>B</h1></body></html>' },
     '/moved': { status: 301, headers: { location: '/dup1' } },
     '/x': { headers: { 'content-type': 'text/html' }, body: '<html lang="en"><title>X page title</title><h1>X</h1>' },
-    '/head.js': { headers: { 'content-type': 'text/javascript' }, body: 'void 0;' },
+    '/head.js': { headers: { 'content-type': 'text/javascript', 'cache-control': 'public, max-age=3600' }, body: 'void 0;' },
     '/big.jpg': { headers: { 'content-type': 'image/jpeg' }, body: Buffer.alloc(400 * 1024, 1) },
   };
 }

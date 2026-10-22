@@ -53,6 +53,7 @@ export async function crawl(first, ctx) {
       html: result.body,
       doc: scan(result.body),
       redirects: result.redirects,
+      truncated: result.truncated,
     };
     pages.push(page);
     ctx.onPage?.(page, pages.length);
@@ -84,6 +85,8 @@ export async function crawl(first, ctx) {
     const results = await pool(batch, ctx.concurrency, (url) =>
       request(url, {
         readBody: true,
+        startUrl: ctx.startUrl,
+        allowPrivate: ctx.allowPrivate,
         userAgent: ctx.userAgent,
         timeoutMs: ctx.timeoutMs,
         throttle: ctx.throttle,
@@ -102,6 +105,8 @@ export async function crawl(first, ctx) {
 export function probeOf(result) {
   return {
     status: result.status,
+    headers: result.headers,
+    truncated: result.truncated,
     finalUrl: result.finalUrl,
     redirects: result.redirects,
     bytes: result.bytes,

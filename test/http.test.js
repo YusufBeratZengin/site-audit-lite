@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { Throttle, request } from '../src/http.js';
-import { resolveUrl, normalizeStartUrl, isLoopbackHost, sameOrigin } from '../src/url.js';
+import { isPrivateHost, resolveUrl, normalizeStartUrl, isLoopbackHost, sameOrigin } from '../src/url.js';
 import { startServer } from './support/server.js';
 
 const servers = [];
@@ -30,6 +30,8 @@ test('request gives up on redirect loops', async () => {
   const r = await request(`${s.url}/loop`);
   assert.equal(r.status, 0);
   assert.match(r.error, /Too many redirects/);
+  assert.equal(r.redirects.length, 5);
+  assert.equal(s.requests.length, 6);
 });
 
 test('request does not read the body unless asked, and HEAD uses content-length', async () => {
@@ -91,4 +93,79 @@ test('url helpers', () => {
   assert.equal(isLoopbackHost('example.com'), false);
   assert.equal(sameOrigin('https://a.test/x', 'https://a.test/y'), true);
   assert.equal(sameOrigin('https://a.test', 'http://a.test'), false);
+});
+
+for (const encoding of ['gzip', 'br']) {
+  test(`decoded ${encoding} bodies are capped and flagged`, async () => {
+    const s = await startServer({ '/': { headers: { 'content-type': 'text/html' }, body: 'x'.repeat(100000), [encoding]: true } });
+    servers.push(s);
+    const r = await request(s.url, { readBody: true, maxBytes: 1024 });
+    assert.equal(r.truncated, true);
+    assert.equal(Buffer.byteLength(r.body), 1024);
+    assert.equal(r.bytes, 1024);
+  });
+}
+
+test('missing content-type never becomes HTML', async () => {
+  const s = await startServer({ '/': { body: '<title>Not typed</title>' } });
+  servers.push(s);
+  assert.equal((await request(s.url, { readBody: true })).body, null);
+});
+
+for (const status of [429, 503]) {
+  for (const [header, expectedWait, attempts] of [['1', 1000, 2], ['30', 30000, 2], ['31', null, 1], ['invalid', null, 1], ['Thu, 01 Jan 2026 00:00:02 GMT', 2000, 2]]) {
+    test(`Retry-After ${status} ${header}`, async () => {
+      const s = await startServer({ '/': { status, headers: { 'retry-after': header } } });
+      servers.push(s);
+      const delays = [];
+      const r = await request(s.url, { wait: async (ms) => delays.push(ms), now: () => Date.parse('2026-01-01T00:00:00Z') });
+      assert.equal(r.status, status);
+      assert.equal(s.requests.length, attempts);
+      assert.deepEqual(delays, expectedWait === null ? [] : [expectedWait]);
+    });
+  }
+}
+
+test('Retry-After can recover on the single retry', async () => {
+  let hits = 0;
+  const s = await startServer({ '/': () => ++hits === 1 ? { status: 503, headers: { 'retry-after': '0' } } : { body: 'ok' } });
+  servers.push(s);
+  assert.equal((await request(s.url)).status, 200);
+  assert.equal(hits, 2);
+});
+
+for (const target of ['http://169.254.169.254/', 'http://10.0.0.1/', 'http://localhost/', 'http://[::ffff:a00:1]/', 'http://metadata.google.internal/']) {
+  test(`public redirect refuses ${target} before fetch`, async () => {
+    const s = await startServer({ '/': { status: 302, headers: { location: target } } });
+    servers.push(s);
+    const calls = [];
+    const r = await request('http://93.184.216.34/', {
+      fetchImpl: async (url, options) => {
+        calls.push(url);
+        assert.equal(url, 'http://93.184.216.34/');
+        return fetch(s.url, options);
+      },
+    });
+    assert.match(r.error, /Refusing private/);
+    assert.equal(calls.length, 1);
+  });
+}
+
+test('redirect hostname resolving privately is refused before fetch', async () => {
+  const calls = [];
+  const r = await request('http://public.test/', {
+    fetchImpl: async (url) => { calls.push(url); return { status: 302, headers: new Headers({ location: 'http://internal.test/' }), body: null }; },
+    lookupHost: async (host) => [{ address: host === 'public.test' ? '93.184.216.34' : '192.168.1.2' }],
+  });
+  assert.match(r.error, /resolving to a private/);
+  assert.equal(calls.length, 1);
+});
+
+test('private start or explicit opt-in allows private requests', async () => {
+  const s = await startServer({ '/': { body: 'ok' } });
+  servers.push(s);
+  assert.equal((await request(s.url)).status, 200);
+  assert.equal((await request(s.url, { startUrl: 'https://public.test/', allowPrivate: true })).status, 200);
+  for (const host of ['10.0.0.1', '192.168.0.1', '172.16.0.1', '169.254.1.1', '::1', 'fc00::1', 'fe80::1', '::ffff:192.168.1.1']) assert.ok(isPrivateHost(host), host);
+  assert.equal(isPrivateHost('93.184.216.34'), false);
 });

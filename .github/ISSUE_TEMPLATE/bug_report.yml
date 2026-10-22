@@ -1,0 +1,56 @@
+name: Bug or false positive
+description: Report incorrect behavior or a finding that should not be raised
+title: 'bug: '
+labels: [bug]
+body:
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched existing issues
+          required: true
+        - label: I removed personal data, credentials and private site content
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: site-audit version
+      description: Output of site-audit --version
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and Node.js version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps and command
+      description: Use a synthetic local fixture; do not share private URLs.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: input
+    id: finding-id
+    attributes:
+      label: Finding id for a false positive
+      description: Copy the exact check id from the report.
+  - type: textarea
+    id: html
+    attributes:
+      label: Minimal synthetic HTML snippet
+      description: For false positives, include only the markup that triggers the finding.
+      render: html
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or report excerpt
+      render: text

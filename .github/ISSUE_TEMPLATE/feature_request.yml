@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest an improvement to the audit or reports
+title: 'feat: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: input
+    id: finding-id
+    attributes:
+      label: Related finding id
+      description: For a new heuristic or false positive, name the existing check if relevant.
+  - type: textarea
+    id: html
+    attributes:
+      label: Synthetic HTML example
+      description: Show the desired outcome without personal data or private site content.
+      render: html

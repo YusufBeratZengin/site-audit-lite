@@ -1,7 +1,7 @@
 {
   "name": "site-audit-lite",
   "version": "0.1.0",
-  "description": "A fast, dependency-light website health checker for small business sites: SEO, accessibility, security headers, performance hints and broken links.",
+  "description": "A fast, zero-dependency website health checker for small business sites: SEO, accessibility, security headers, performance hints and broken links",
   "type": "module",
   "bin": {
     "site-audit": "bin/site-audit.js"
@@ -23,7 +23,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prepublishOnly": "npm run lint && npm test"
   },
   "keywords": [
     "seo",
@@ -46,5 +47,9 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

@@ -5,6 +5,12 @@ import { isLoopbackHost } from '../url.js';
 export function checkSecurity(page) {
   const { headers, doc, url } = page;
   const out = [];
+  const rawCookies = headers['set-cookie'] || [];
+  const cookies = Array.isArray(rawCookies) ? rawCookies : rawCookies.split(/,(?=\s*[^;,=\s]+=)/);
+  const unsafe = cookies.filter((cookie) => !/;\s*Secure\s*(?:;|$)/i.test(cookie)
+    || !/;\s*HttpOnly\s*(?:;|$)/i.test(cookie) || !/;\s*SameSite=(?:Strict|Lax|None)\s*(?:;|$)/i.test(cookie));
+  // Never include cookie names or values in findings.
+  if (unsafe.length) out.push({ id: 'sec-cookie-flags', evidence: `${unsafe.length} Set-Cookie headers lack Secure, HttpOnly or a valid SameSite attribute.` });
   const parsed = new URL(url);
   const isHttps = parsed.protocol === 'https:';
   const loopback = isLoopbackHost(parsed.hostname);

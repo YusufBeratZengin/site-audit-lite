@@ -20,6 +20,18 @@ function check(id, category, severity, scope, title, fix) {
 }
 
 export const CATALOG = Object.fromEntries([
+  check('seo-hreflang-invalid', 'seo', 'warning', 'page',
+    'Invalid hreflang declarations', 'Use valid language tags (or x-default) and include an alternate link to the current page.'),
+  check('seo-title-too-generic', 'seo', 'warning', 'page',
+    'Title is too generic', 'Replace Home or Untitled with a descriptive title unique to this page.'),
+  check('a11y-heading-order', 'accessibility', 'warning', 'page',
+    'Heading levels are skipped', 'Start with h1 and increase heading levels one step at a time.'),
+  check('a11y-button-name-missing', 'accessibility', 'error', 'page',
+    'Buttons without an accessible name', 'Add visible button text, an image alt, aria-label or aria-labelledby.'),
+  check('sec-cookie-flags', 'security', 'warning', 'page',
+    'Cookies lack security flags', 'Set Secure, HttpOnly and SameSite on cookies; review intentional script-readable cookies manually.'),
+  check('perf-no-cache-headers', 'performance', 'info', 'page',
+    'Static assets have no cache headers', 'Send Cache-Control or Expires for same-site images, scripts and stylesheets.'),
   // SEO
   check('seo-title-missing', 'seo', 'error', 'page',
     'Page has no title',

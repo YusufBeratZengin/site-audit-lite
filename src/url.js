@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 // URL helpers shared by the crawler and the checks.
 
 const SKIPPED_SCHEMES = /^(?:mailto|tel|javascript|data|sms|file|blob|about|ftp):/i;
@@ -20,6 +22,31 @@ export function resolveUrl(href, base) {
 export function isLoopbackHost(hostname) {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   return h === 'localhost' || h.endsWith('.localhost') || h === '::1' || /^127(?:\.\d{1,3}){3}$/.test(h);
+}
+
+/** Private, loopback, link-local and common metadata targets (including mapped IPv6). */
+export function isPrivateHost(hostname) {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (isLoopbackHost(h) || h === 'metadata.google.internal' || h === 'metadata' || h === 'instance-data') return true;
+  if (isIP(h) === 4) {
+    const [a, b] = h.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || a === 169 && b === 254
+      || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168
+      || a === 100 && b >= 64 && b <= 127 || a >= 224;
+  }
+  if (isIP(h) === 6) {
+    if (h.startsWith('::ffff:')) {
+      const tail = h.slice(7);
+      if (isIP(tail) === 4) return isPrivateHost(tail);
+      const parts = tail.split(':');
+      if (parts.length === 2) {
+        const n = parseInt(parts[0], 16) * 65536 + parseInt(parts[1], 16);
+        return isPrivateHost([n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.'));
+      }
+    }
+    return h === '::' || h === '::1' || /^(?:f[cd]|fe[89ab])/.test(h);
+  }
+  return false;
 }
 
 /** Add a scheme when the user typed a bare host name. */

@@ -1,7 +1,7 @@
 // A tiny in-test HTTP server that serves fixture sites on 127.0.0.1.
 
 import { createServer } from 'node:http';
-import { gzipSync } from 'node:zlib';
+import { gzipSync, brotliCompressSync } from 'node:zlib';
 
 /**
  * routes: { '/path': { status?, headers?, body?, gzip? } | (req) => same }
@@ -22,6 +22,10 @@ export async function startServer(routes) {
     }
     const headers = { ...(route.headers || {}) };
     let body = route.body ?? '';
+    if (route.br) {
+      body = brotliCompressSync(Buffer.from(body));
+      headers['content-encoding'] = 'br';
+    }
     if (route.gzip) {
       body = gzipSync(Buffer.from(body));
       headers['content-encoding'] = 'gzip';

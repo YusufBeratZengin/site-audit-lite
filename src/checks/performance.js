@@ -22,6 +22,9 @@ export function formatBytes(n) {
 export function checkPerformance(page, weight) {
   const { doc, headers, bytes, timeMs } = page;
   const out = [];
+  const uncached = (weight.resources || []).filter(({ probe }) => probe && probe.status >= 200 && probe.status < 300
+    && !probe.headers?.['cache-control'] && !probe.headers?.expires);
+  if (uncached.length) out.push({ id: 'perf-no-cache-headers', evidence: `${uncached.length} same-site static assets have neither Cache-Control nor Expires.` });
 
   if (weight.total > LIMITS.pageWeightWarn) {
     out.push({

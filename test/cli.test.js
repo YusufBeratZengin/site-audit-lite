@@ -111,3 +111,28 @@ test('unreachable site exits 2', async () => {
   assert.equal(r.code, 2);
   assert.match(r.stderr, /Could not fetch/);
 });
+
+for (const args of [[], ['--unknown'], ['--max-pages', '0'], ['--max-pages', '-1'], ['--max-pages', 'abc']]) {
+  test(`CLI usage validation ${JSON.stringify(args)}`, async () => {
+    const c = capture();
+    const full = args.length && args[0] !== '--unknown' ? [good.url, ...args] : args;
+    assert.equal(await main(full, c.io), 2);
+    const error = c.err.join('');
+    assert.match(error, /Usage:/);
+    assert.equal((error.match(/Error:/g) || []).length, 1);
+    if (args[0] === '--max-pages') assert.match(error, /--max-pages must be an integer >= 1/);
+  });
+}
+
+test('--baseline integrates diff reports and --fail-on-new', async () => {
+  const baseline = join(dir, 'baseline.json');
+  assert.equal((await cli([good.url, '--delay', '0', '--quiet', '--out', baseline])).code, 0);
+  const md = join(dir, 'diff', 'report.md');
+  const first = await cli([bad.url, '--delay', '0', '--baseline', baseline, '--fail-on-new', 'error', '--out', md, '--quiet']);
+  assert.equal(first.code, 1, first.stderr);
+  assert.match(await readFile(md, 'utf8'), /Baseline status: new/);
+  const own = join(dir, 'bad-baseline.json');
+  await cli([bad.url, '--delay', '0', '--quiet', '--out', own]);
+  assert.equal((await cli([bad.url, '--delay', '0', '--baseline', own, '--fail-on-new', 'error', '--quiet'])).code, 0);
+  assert.equal((await cli([good.url, '--fail-on-new', 'error'])).code, 2);
+});

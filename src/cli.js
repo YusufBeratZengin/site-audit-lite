@@ -1,6 +1,7 @@
+import { compareBaseline, hasNewFindings } from './baseline.js';
 // Command line interface.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { AuditError, DEFAULTS, runAudit } from './audit.js';
 import { renderHtml } from './report/html.js';
@@ -23,6 +24,9 @@ Options:
   --user-agent <text>  User-Agent header (also used to match robots.txt rules)
   --out <file>         Write a report; format from extension (.html, .md, .json). Repeatable.
   --format <fmt>       Override the format of the --out files: html, md or json
+  --baseline <file>    Compare findings with a previous JSON report
+  --fail-on-new <sev>  Exit 1 for new findings at this severity or higher (requires --baseline)
+  --allow-private      Allow private redirect targets for a trusted start URL
   --fail-under <n>     Exit with code 1 when the overall score is below n
   --verbose            Show fixes and evidence in the terminal summary
   --quiet              Print nothing except errors
@@ -30,10 +34,12 @@ Options:
   -h, --help           Show this help
   -v, --version        Show the version
 
-Exit codes: 0 success, 1 score below --fail-under, 2 usage or fetch error.
+Exit codes: 0 success, 1 score below --fail-under or new findings above threshold, 2 usage or fetch error.
 `;
 
 const VALUE_OPTIONS = {
+  '--baseline': 'baseline',
+  '--fail-on-new': 'failOnNew',
   '--max-pages': 'maxPages',
   '--max-depth': 'maxDepth',
   '--concurrency': 'concurrency',
@@ -61,6 +67,7 @@ export function parseArgs(argv) {
 
     if (flag === '-h' || flag === '--help') args.help = true;
     else if (flag === '-v' || flag === '--version') args.version = true;
+    else if (flag === '--allow-private') args.allowPrivate = true;
     else if (flag === '--quiet') args.quiet = true;
     else if (flag === '--verbose') args.verbose = true;
     else if (flag === '--no-color') args.color = false;
@@ -117,9 +124,18 @@ export async function main(argv, io = {}) {
     if (failUnder !== null && !(failUnder >= 0 && failUnder <= 100)) {
       throw new UsageError('--fail-under must be a number between 0 and 100.');
     }
+    if (args.failOnNew && (!args.baseline || !['error', 'warning', 'info'].includes(args.failOnNew))) throw new UsageError('--fail-on-new requires --baseline and severity error, warning or info.');
+    let previous;
+    if (args.baseline) {
+      try {
+        previous = JSON.parse(await readFile(args.baseline, 'utf8'));
+        compareBaseline({ findings: [] }, previous);
+      } catch { throw new UsageError('Cannot read baseline: expected a JSON report with findings and affected URLs.'); }
+    }
     const targets = args.out.map((file) => ({ file, format: formatFor(file, args.format) }));
 
     const options = {
+      allowPrivate: args.allowPrivate,
       maxPages: numeric('maxPages', 'max-pages', 1),
       maxDepth: numeric('maxDepth', 'max-depth', 0),
       concurrency: numeric('concurrency', 'concurrency', 1),
@@ -129,7 +145,8 @@ export async function main(argv, io = {}) {
       onProgress: args.quiet || !args.verbose ? undefined : (message) => stderr(`${message}\n`),
     };
 
-    const result = await runAudit(args.url, options);
+    let result = await runAudit(args.url, options);
+    if (previous) result = compareBaseline(result, previous);
 
     for (const { file, format } of targets) {
       const path = resolve(file);
@@ -141,10 +158,10 @@ export async function main(argv, io = {}) {
       const color = args.color ?? (Boolean(process.stdout.isTTY) && !process.env.NO_COLOR);
       stdout(`${renderTerminal(result, { color, verbose: args.verbose })}\n`);
     }
-    return failUnder !== null && result.scores.overall < failUnder ? 1 : 0;
+    return (failUnder !== null && result.scores.overall < failUnder) || (args.failOnNew && hasNewFindings(result, args.failOnNew)) ? 1 : 0;
   } catch (err) {
     if (err instanceof UsageError) {
-      stderr(`Error: ${err.message}\nRun "site-audit --help" for usage.\n`);
+      stderr(`Error: ${err.message}\n\n${HELP}`);
     } else if (err instanceof AuditError) {
       stderr(`Error: ${err.message}\n`);
     } else {

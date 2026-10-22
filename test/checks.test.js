@@ -176,3 +176,35 @@ test('site: https, redirect, robots, sitemap, favicon, duplicate titles', () => 
   });
   assert.deepEqual(redirected, []);
 });
+
+for (const row of [
+  { id: 'seo-title-too-generic', check: checkSeo, bad: '<title>Home</title>', good: '<title>Bakery opening hours</title>' },
+  { id: 'seo-title-too-generic', check: checkSeo, bad: '<title>Untitled</title>', good: '<title>Menu and prices</title>' },
+  { id: 'seo-hreflang-invalid', check: checkSeo, bad: '<link rel="alternate" hreflang="en" href="/other">', good: '<link rel="alternate" hreflang="en-US" href="/">' },
+  { id: 'seo-hreflang-invalid', check: checkSeo, bad: '<link rel="alternate" hreflang="zz" href="/">', good: '<link rel="alternate" hreflang="tr" href="/"><link rel="alternate" hreflang="x-default" href="/">' },
+  { id: 'a11y-heading-order', check: checkAccessibility, bad: '<h1>A</h1><h3>B</h3>', good: '<h1>A</h1><h2>B</h2><h3>C</h3><h2>D</h2>' },
+  { id: 'a11y-button-name-missing', check: checkAccessibility, bad: '<button><span></span></button>', good: '<button>Send</button><button aria-label="Close"></button><button><img alt="Save"></button>' },
+  { id: 'a11y-button-name-missing', check: checkAccessibility, bad: '<input type="button">', good: '<input type="submit"><input type="button" value="Open">' },
+]) {
+  test(`${row.id}: positive and negative fixture ${row.bad}`, () => {
+    assert.ok(ids(row.check(page(row.bad))).includes(row.id));
+    assert.ok(!ids(row.check(page(row.good))).includes(row.id));
+  });
+}
+
+for (const cookie of ['demo=x; HttpOnly; SameSite=Lax', 'demo=x; Secure; SameSite=Lax', 'demo=x; Secure; HttpOnly']) {
+  test(`sec-cookie-flags: missing flag ${cookie.split(';').slice(1).join(';')}`, () => {
+    assert.ok(ids(checkSecurity(page('', { headers: { 'set-cookie': [cookie] } }))).includes('sec-cookie-flags'));
+    const safe = ['demo=x; Secure; HttpOnly; SameSite=Lax', 'other=y; Secure; HttpOnly; SameSite=Strict'];
+    assert.ok(!ids(checkSecurity(page('', { headers: { 'set-cookie': safe } }))).includes('sec-cookie-flags'));
+  });
+}
+
+for (const headers of [{ 'cache-control': 'max-age=3600' }, { expires: 'Thu, 01 Jan 2027 00:00:00 GMT' }]) {
+  test(`perf-no-cache-headers: ${Object.keys(headers)[0]}`, () => {
+    const weight = (h) => ({ total: 0, images: [], resources: [{ url: 'https://example.test/a.css', probe: { status: 200, headers: h } }] });
+    assert.ok(ids(checkPerformance(page(''), weight({}))).includes('perf-no-cache-headers'));
+    assert.ok(!ids(checkPerformance(page(''), weight(headers))).includes('perf-no-cache-headers'));
+    assert.ok(!ids(checkPerformance(page(''), { total: 0, images: [], resources: [] })).includes('perf-no-cache-headers'));
+  });
+}

@@ -58,11 +58,12 @@ export async function runAudit(input, options = {}) {
     delayMs: toPositiveInt(options.delayMs ?? DEFAULTS.delayMs, 'delayMs', 0),
     timeoutMs: toPositiveInt(options.timeoutMs ?? DEFAULTS.timeoutMs, 'timeoutMs'),
     userAgent: options.userAgent || DEFAULTS.userAgent,
+    allowPrivate: options.allowPrivate ?? false,
   };
   const progress = options.onProgress ?? (() => {});
   const startedAt = Date.now();
   const throttle = new Throttle(opts.delayMs);
-  const http = { userAgent: opts.userAgent, timeoutMs: opts.timeoutMs, throttle };
+  const http = { userAgent: opts.userAgent, timeoutMs: opts.timeoutMs, throttle, startUrl, allowPrivate: opts.allowPrivate };
 
   // 1. robots.txt of the origin we were asked to visit.
   let origin = new URL(startUrl).origin;
@@ -95,6 +96,8 @@ export async function runAudit(input, options = {}) {
   // 3. Crawl.
   const { pages, fetched } = await crawl(first, {
     origin,
+    startUrl,
+    allowPrivate: opts.allowPrivate,
     robots,
     maxPages: opts.maxPages,
     maxDepth: opts.maxDepth,
@@ -122,7 +125,7 @@ export async function runAudit(input, options = {}) {
   progress(`Checking ${probeList.length} additional URLs`);
   await pool(probeList, opts.concurrency, async (url) => {
     let result = await request(url, { ...http, method: 'HEAD' });
-    if (result.status === 0 || result.status >= 400) {
+    if (result.status === 405 || result.status === 501) {
       result = await request(url, { ...http, method: 'GET' });
     }
     fetched.set(url, probeOf(result));
@@ -136,14 +139,26 @@ export async function runAudit(input, options = {}) {
   if (!sitemapCandidates.length) sitemapCandidates.push(new URL('/sitemap.xml', origin).href);
   let sitemap = null;
   for (const url of sitemapCandidates) {
-    const r = await request(url, { ...http, method: 'GET' });
+    const r = await request(url, { ...http, readBody: true, anyType: true });
     sitemap = { url, status: r.status };
+    if (r.status === 200 && /<sitemapindex\b/i.test(r.body || '')) {
+      const children = [...(r.body || '').matchAll(/<loc\b[^>]*>([^<]+)<\/loc>/gi)]
+        .map((m) => resolveUrl(m[1].trim().replace(/&amp;/g, '&'), url))
+        .filter((u) => u && sameOrigin(u, origin));
+      sitemap.children = [];
+      // One index level and a bounded child budget; never crawl URLs from a urlset.
+      for (const child of [...new Set(children)].slice(0, opts.maxPages)) {
+        const response = await request(child, { ...http, readBody: true, anyType: true });
+        sitemap.children.push({ url: child, status: response.status });
+      }
+      if (!sitemap.children.some((child) => child.status === 200)) sitemap.status = 0;
+    }
     if (r.status === 200) break;
   }
 
   const iconCandidates = pages[0].doc.icons
     .map((h) => resolveUrl(h, pages[0].url))
-    .filter(Boolean);
+    .filter((u) => u && sameOrigin(u, origin));
   iconCandidates.push(new URL('/favicon.ico', origin).href);
   let favicon = null;
   for (const url of iconCandidates) {
@@ -187,7 +202,7 @@ export async function runAudit(input, options = {}) {
     add(page.url, checkSeo(page));
     add(page.url, checkAccessibility(page));
     add(page.url, checkSecurity(page));
-    add(page.url, checkPerformance(page, { total, images }));
+    add(page.url, checkPerformance(page, { total, images, resources }));
     add(page.url, checkLinks(page, origin, lookup));
   }
   add(origin, checkSite({
@@ -212,7 +227,7 @@ export async function runAudit(input, options = {}) {
   return {
     tool: 'site-audit-lite',
     version: VERSION,
-    generatedAt: (options.now ?? new Date()).toISOString(),
+    generatedAt: (options.now ?? new Date(process.env.SITE_AUDIT_NOW || Date.now())).toISOString(),
     startUrl,
     finalUrl: first.finalUrl,
     origin,
@@ -225,6 +240,7 @@ export async function runAudit(input, options = {}) {
       bytes: p.bytes,
       timeMs: p.timeMs,
       title: p.doc.title,
+      truncated: p.truncated,
     })),
     categories: Object.fromEntries(
       Object.entries(CATEGORIES).map(([key, meta]) => [key, { label: meta.label, weight: meta.weight }]),
