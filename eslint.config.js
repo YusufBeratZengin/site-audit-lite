@@ -23,7 +23,7 @@ export default [
       globals: nodeGlobals,
     },
     rules: {
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
       eqeqeq: ['error', 'always'],
     },
   },
