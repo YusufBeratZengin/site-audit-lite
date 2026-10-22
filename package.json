@@ -1,0 +1,50 @@
+{
+  "name": "site-audit-lite",
+  "version": "0.1.0",
+  "description": "A fast, dependency-light website health checker for small business sites: SEO, accessibility, security headers, performance hints and broken links.",
+  "type": "module",
+  "bin": {
+    "site-audit": "bin/site-audit.js"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "README.tr.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "seo",
+    "accessibility",
+    "security-headers",
+    "broken-links",
+    "audit",
+    "cli"
+  ],
+  "author": "Yusuf Berat Zengin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YusufBeratZengin/site-audit-lite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YusufBeratZengin/site-audit-lite/issues"
+  },
+  "homepage": "https://github.com/YusufBeratZengin/site-audit-lite#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0"
+  }
+}
