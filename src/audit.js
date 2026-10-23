@@ -50,7 +50,12 @@ async function loadRobots(origin, http) {
  * @param options see DEFAULTS; also `now` (Date, for deterministic output) and `onProgress(message)`
  */
 export async function runAudit(input, options = {}) {
-  const startUrl = normalizeStartUrl(input);
+  let startUrl;
+  try {
+    startUrl = normalizeStartUrl(input);
+  } catch (err) {
+    throw new AuditError(err.message);
+  }
   const opts = {
     maxPages: toPositiveInt(options.maxPages ?? DEFAULTS.maxPages, 'maxPages'),
     maxDepth: toPositiveInt(options.maxDepth ?? DEFAULTS.maxDepth, 'maxDepth', 0),

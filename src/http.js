@@ -40,6 +40,20 @@ function headersToObject(headers) {
   return out;
 }
 
+/** Decode with the charset from Content-Type, a BOM or an early <meta>; default UTF-8. */
+function decodeBody(buffer, contentType) {
+  let label = /charset\s*=\s*["']?([\w.:-]+)/i.exec(contentType ?? '')?.[1];
+  if (!label && !(buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf)) {
+    const head = buffer.subarray(0, 2048).toString('latin1');
+    label = /<meta[^>]+charset\s*=\s*["']?([\w.:-]+)/i.exec(head)?.[1];
+  }
+  try {
+    return new TextDecoder(label || 'utf-8').decode(buffer);
+  } catch {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+}
+
 async function readLimited(response, maxBytes) {
   if (!response.body) return { text: '', bytes: 0, truncated: false };
   const reader = response.body.getReader();
@@ -58,7 +72,7 @@ async function readLimited(response, maxBytes) {
       break;
     }
   }
-  const text = new TextDecoder('utf-8').decode(Buffer.concat(chunks));
+  const text = decodeBody(Buffer.concat(chunks), response.headers.get('content-type'));
   return { text, bytes, truncated };
 }
 

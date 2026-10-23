@@ -169,3 +169,16 @@ test('private start or explicit opt-in allows private requests', async () => {
   for (const host of ['10.0.0.1', '192.168.0.1', '172.16.0.1', '169.254.1.1', '::1', 'fc00::1', 'fe80::1', '::ffff:192.168.1.1']) assert.ok(isPrivateHost(host), host);
   assert.equal(isPrivateHost('93.184.216.34'), false);
 });
+
+test('request decodes legacy Turkish charsets from header and meta tag', async () => {
+  const encode = (text) => Buffer.from(text.replace(/ş/g, '\xfe').replace(/ğ/g, '\xf0').replace(/İ/g, '\xdd'), 'latin1');
+  const s = await startServer({
+    '/hdr': { headers: { 'content-type': 'text/html; charset=windows-1254' }, body: encode('<title>İş yeri ğ</title>') },
+    '/meta': { headers: { 'content-type': 'text/html' }, body: encode('<meta charset="iso-8859-9"><title>İş yeri ğ</title>') },
+    '/utf': { headers: { 'content-type': 'text/html' }, body: '<title>İş yeri ğ</title>' },
+  });
+  servers.push(s);
+  assert.equal((await request(`${s.url}/hdr`, { readBody: true })).body, '<title>İş yeri ğ</title>');
+  assert.match((await request(`${s.url}/meta`, { readBody: true })).body, /<title>İş yeri ğ<\/title>/);
+  assert.equal((await request(`${s.url}/utf`, { readBody: true })).body, '<title>İş yeri ğ</title>');
+});

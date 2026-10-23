@@ -176,3 +176,10 @@ test('an output directory blocked by a file exits 2 without overwriting it', asy
   assert.equal(c.out.join(''), '');
   assert.equal(await readFile(blocker, 'utf8'), 'keep this file');
 });
+
+test('unsupported URL scheme is a clean error, not a stack trace', async () => {
+  const r = await cli(['ftp://example.test']);
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /Only http and https/);
+  assert.doesNotMatch(r.stderr, /Unexpected error|\n\s+at /);
+});
