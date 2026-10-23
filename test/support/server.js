@@ -5,9 +5,10 @@ import { gzipSync, brotliCompressSync } from 'node:zlib';
 
 /**
  * routes: { '/path': { status?, headers?, body?, gzip? } | (req) => same }
+ * options.port: fixed demo port; defaults to an ephemeral test port.
  * Returns { url, requests, close }.
  */
-export async function startServer(routes) {
+export async function startServer(routes, { port = 0 } = {}) {
   const requests = [];
   const server = createServer((req, res) => {
     const path = req.url.split('#')[0];
@@ -41,10 +42,13 @@ export async function startServer(routes) {
       res.end(req.method === 'HEAD' ? undefined : body);
     }
   });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', resolve);
+  });
+  const address = server.address();
   return {
-    url: `http://127.0.0.1:${port}`,
+    url: `http://127.0.0.1:${address.port}`,
     requests,
     close: () =>
       new Promise((resolve) => {

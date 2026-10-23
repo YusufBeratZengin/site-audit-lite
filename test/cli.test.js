@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -135,4 +135,44 @@ test('--baseline integrates diff reports and --fail-on-new', async () => {
   await cli([bad.url, '--delay', '0', '--quiet', '--out', own]);
   assert.equal((await cli([bad.url, '--delay', '0', '--baseline', own, '--fail-on-new', 'error', '--quiet'])).code, 0);
   assert.equal((await cli([good.url, '--fail-on-new', 'error'])).code, 2);
+});
+
+test('unreadable or malformed baselines fail before any audit requests', async () => {
+  const baseline = join(dir, 'invalid-baseline.json');
+  const requestsBefore = good.requests.length;
+  const missing = capture();
+  assert.equal(await main([good.url, '--baseline', join(dir, 'missing-baseline.json')], missing.io), 2);
+  assert.match(missing.err.join(''), /Cannot read baseline/);
+
+  for (const contents of ['not JSON', '{}', '{"findings":[{"id":"seo-title-missing","affected":null}]}']) {
+    await writeFile(baseline, contents);
+    const c = capture();
+    assert.equal(await main([good.url, '--baseline', baseline], c.io), 2);
+    assert.match(c.err.join(''), /Cannot read baseline: expected a JSON report/);
+    assert.equal(c.out.join(''), '');
+  }
+  assert.equal(good.requests.length, requestsBefore, 'invalid baselines must not trigger a crawl');
+});
+
+test('invalid score and severity gates are rejected before fetching', async () => {
+  const requestsBefore = good.requests.length;
+  for (const threshold of ['-1', '101', 'NaN']) {
+    const c = capture();
+    assert.equal(await main([good.url, '--fail-under', threshold], c.io), 2);
+    assert.match(c.err.join(''), /--fail-under must be a number between 0 and 100/);
+  }
+  const c = capture();
+  assert.equal(await main([good.url, '--baseline', 'unused.json', '--fail-on-new', 'critical'], c.io), 2);
+  assert.match(c.err.join(''), /severity error, warning or info/);
+  assert.equal(good.requests.length, requestsBefore);
+});
+
+test('an output directory blocked by a file exits 2 without overwriting it', async () => {
+  const blocker = join(dir, 'output-blocker');
+  await writeFile(blocker, 'keep this file');
+  const c = capture();
+  assert.equal(await main([good.url, '--delay', '0', '--out', join(blocker, 'report.json')], c.io), 2);
+  assert.match(c.err.join(''), /Unexpected error:.*(?:EEXIST|ENOTDIR)/s);
+  assert.equal(c.out.join(''), '');
+  assert.equal(await readFile(blocker, 'utf8'), 'keep this file');
 });

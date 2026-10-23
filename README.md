@@ -1,59 +1,61 @@
 # site-audit-lite
 
-[![CI](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Node.js ≥20](https://img.shields.io/badge/node-%3E%3D20-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/) [![npm version](https://img.shields.io/npm/v/site-audit-lite.svg)](https://www.npmjs.com/package/site-audit-lite)
 
 [English](README.md) | [Türkçe](README.tr.md)
 
-A fast, zero-dependency website health checker for small business sites. It crawls a site, checks SEO basics, accessibility basics, security headers, performance hints and broken links, and writes a readable report as HTML, Markdown or JSON.
+A fast website health checker for small business sites, with zero runtime dependencies.
 
-Install from source: `npm ci`. Local-only demo: `node scripts/make-example.mjs`.
+![Real CLI output: a synthetic five-page site scores 74/100, with findings grouped by severity](docs/demo.svg)
 
-It is meant for freelancers and site owners who want a quick, explainable audit without running a full Lighthouse setup or paying for a SaaS tool. Every finding has an id, a severity, the evidence that triggered it, and a plain-language fix.
+[Quick start](#quick-start) · [Usage](#usage) · [Configuration](#configuration-and-options) · [Checks](#what-it-checks) · [FAQ](#faq-and-limitations) · [Contributing](#contributing)
 
-- Node.js 20 or newer, ESM, built on the global `fetch`.
-- Zero runtime dependencies.
-- Respects `robots.txt`, limits pages, depth and concurrency, and waits politely between requests.
-- Standalone HTML report with inline CSS and light/dark themes.
+## Why
 
-## Demo
+- **Small setup:** Node.js 20+, built-in `fetch`, no browser download or runtime dependencies.
+- **Explainable findings:** 44 checks across SEO, accessibility, security, performance and links, each with evidence and a fix.
+- **Reports you control:** standalone HTML, Markdown and JSON; local processing, robots.txt support and baseline comparisons for CI.
 
-Run `node scripts/make-example.mjs` for a synthetic site served on an ephemeral loopback port. The saved report uses port 8080 and zero timings for reproducibility. Real output (first lines):
+## Quick start
 
-```text
-Site audit: http://127.0.0.1:8080
-Score 74/100 (C) across 5 pages
-
-  SEO             44  F
-  Accessibility   87  B
-  Security        80  B
-  Performance     97  A
-  Links           92  A
-
-6 errors, 10 warnings, 12 notices
-```
-
-View the [HTML example](examples/report.html) or [Markdown example](examples/report.md).
-
-## Install
+Run a complete demo against synthetic local fixtures, without a site to configure:
 
 ```sh
 git clone https://github.com/YusufBeratZengin/site-audit-lite.git
 cd site-audit-lite
-npm install        # only needed for development (tests and lint)
-npm link           # optional: makes the `site-audit` command available globally
+npm ci
+node scripts/make-demo.mjs
 ```
 
-You can also run it without linking: `node bin/site-audit.js http://127.0.0.1:8080`.
+Requires Node.js 20 or newer and an available loopback port 8080. `npm ci` installs development tools; the CLI itself needs no installed packages. The demo prints the real CLI summary and regenerates `docs/demo.svg` from its first 22 output lines. The npm badge reflects the registry and may show “package not found” before publication; source checkout works independently.
+
+For your own local site, run `node bin/site-audit.js http://127.0.0.1:8080`. Optionally run `npm link` to use `site-audit` globally.
+
+## Demo
+
+To run the exact command shown in the image, start the synthetic site in one terminal:
+
+```sh
+node scripts/make-demo.mjs --serve
+```
+
+In another terminal, from the repository root:
+
+```sh
+node bin/site-audit.js http://127.0.0.1:8080 --delay 0 --no-color
+```
+
+Stop the fixture server with Ctrl+C. Generate full sample reports with `node scripts/make-example.mjs`, then open `examples/report.html` or `examples/report.md`. Both demo scripts use synthetic fixtures and make no requests to public sites.
 
 ## Usage
 
-These commands require your own local site running on port 8080. You can use `node bin/site-audit.js` in place of the linked `site-audit` command.
+These commands require a local site running on port 8080 (your own site or the demo server above).
 
 ```sh
-site-audit http://127.0.0.1:8080
-site-audit http://127.0.0.1:8080 --max-pages 20 --out report.html
-site-audit http://127.0.0.1:8080 --out report.md --out report.json
-site-audit http://127.0.0.1:8080 --fail-under 80 --quiet
+node bin/site-audit.js http://127.0.0.1:8080
+node bin/site-audit.js http://127.0.0.1:8080 --max-pages 20 --out report.html
+node bin/site-audit.js http://127.0.0.1:8080 --out report.md --out report.json
+node bin/site-audit.js http://127.0.0.1:8080 --fail-under 80 --quiet
 ```
 
 A bare host name is treated as HTTPS; include `http://` explicitly for local HTTP servers.
@@ -173,7 +175,7 @@ Only same-origin links are checked. External links are never requested.
 
 ## Examples
 
-`node scripts/make-example.mjs` uses only synthetic data from `test/support/fixtures.js`; it never audits a real site. It regenerates the [HTML](examples/report.html) and [Markdown](examples/report.md) reports. Set `SITE_AUDIT_NOW` to an ISO date to inject a timestamp; the example defaults to `2026-10-22T00:00:00Z`.
+`node scripts/make-example.mjs` uses only synthetic data from `test/support/fixtures.js`; it never audits a real site. It regenerates `examples/report.html` and `examples/report.md`. Set `SITE_AUDIT_NOW` to an ISO date to inject a timestamp; the example defaults to `2026-10-22T00:00:00Z`. Saved reports normalise the ephemeral port to 8080 and timings to zero. `node scripts/make-demo.mjs` captures CLI stdout directly for the terminal SVG.
 
 ## How it works
 
@@ -206,9 +208,23 @@ Grades: A is 90 or more, B 80, C 70, D 60, F below 60. The scores are a rough gu
 
 `--baseline previous.json` marks findings and affected URLs as `new`, `fixed` or `unchanged` in HTML and Markdown. Matching uses check id plus URL; changed evidence alone is unchanged. A check can contain both new and unchanged URLs, each marked individually. Fixed findings do not affect current scores. `--fail-on-new error` exits 1 only for new errors. JSON keeps existing fields and adds `status` and `baseline` data when comparing.
 
-## Limits and honesty
+## FAQ and limitations
 
-- Unless the START URL is private/local, redirects to private, loopback, link-local, localhost and known metadata targets are refused before fetch. Redirect hostname DNS addresses are checked too. Use `--allow-private` only for trusted targets; an already private/local start permits private targets. Other origins are refused except a same-host HTTP ? HTTPS upgrade.
+### Does it render JavaScript or replace a full accessibility audit?
+
+No. It inspects server HTML with a tolerant scanner. Use a browser-based tool and manual review for rendered content and a complete accessibility assessment.
+
+### Can I use it in CI?
+
+Yes. Save JSON with `--out baseline.json`, then compare a later audit with `--baseline baseline.json --fail-on-new error`. Use `--fail-under 80` for an overall score gate. A score gate or new-finding gate returns exit code 1.
+
+### Does it upload reports?
+
+No. Audits make HTTP requests to the target and its same-origin resources. Reports stay on your machine unless you choose to share them. Review URLs and evidence before sharing.
+
+### What are the limits?
+
+- Unless the START URL is private/local, redirects to private, loopback, link-local, localhost and known metadata targets are refused before fetch. Redirect hostname DNS addresses are checked too. Use `--allow-private` only for trusted targets; an already private/local start permits private targets. Other origins are refused except a same-host HTTP to HTTPS upgrade.
 - This is not network isolation: DNS checks do not prevent a DNS rebinding race between lookup and connection. Audit untrusted sites in a network-restricted environment. Reports contain audited URLs and evidence; review them before sharing. No telemetry or report upload is performed.
 - On 429/503, a valid `Retry-After` up to 30 seconds is honoured once, then the URL is abandoned if still failing. Longer or invalid delays are not retried. HEAD falls back to GET only on 405/501.
 - At most five redirects are followed. Missing Content-Type is never parsed as HTML. Decoded bodies are capped at 2 MiB, including gzip/Brotli; truncated pages have `pages[].truncated` and a report label, and findings may be incomplete.
@@ -222,12 +238,13 @@ Grades: A is 90 or more, B 80, C 70, D 60, F below 60. The scores are a rough gu
 ## Development
 
 ```sh
-npm install
-npm test       # node --test, uses a local HTTP server; no real network
+npm ci
+npm test       # built-in coverage report; synthetic local HTTP servers only
 npm run lint
+npm run test:coverage  # Node 22.8+ or 24: source coverage, 85% line minimum
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
+CI covers Ubuntu and Windows on Node 20, 22 and 24, plus macOS on Node 24. There is no separate typecheck command in this JavaScript project. See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

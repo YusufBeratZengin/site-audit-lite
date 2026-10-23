@@ -7,12 +7,19 @@ Thanks for helping improve site-audit-lite. The project aims to stay small, depe
 ```sh
 git clone https://github.com/YusufBeratZengin/site-audit-lite.git
 cd site-audit-lite
-npm install
+npm ci
 npm test
 npm run lint
+node scripts/make-demo.mjs
 ```
 
 Node.js 20 or newer is required.
+
+`npm test` prints Node's built-in coverage report without extra dependencies.
+On Node 22.8+ or 24, `npm run test:coverage` limits coverage to `src/` and
+`bin/` and enforces at least 85% line coverage. CI runs this gate on Node 24.
+Use the uncovered-line report to add tests for behavior and error paths.
+There is currently no separate typecheck command; this is a JavaScript project.
 
 ## Ground rules
 
@@ -27,7 +34,7 @@ Node.js 20 or newer is required.
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) in English: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`.
 - Keep commits small and focused. Explain why, not only what.
-- Run `npm test` and `npm run lint` before opening a pull request. CI runs both on Ubuntu and Windows with Node 20, 22 and 24.
+- Run `npm test` and `npm run lint` before opening a pull request. CI runs both on Ubuntu and Windows with Node 20, 22 and 24, plus a Node 24 macOS job.
 - Add an entry under "Unreleased" in `CHANGELOG.md` for user-visible changes.
 
 ## Reporting bugs
@@ -49,7 +56,7 @@ verify package ownership and trusted publishing before creating a release tag.
 1. Review Unreleased entries and update `CHANGELOG.md` for the release.
 2. Update `package.json`, `package-lock.json` and the constant in `src/version.js` together.
 3. Run `npm run lint`, `npm test`, and `npm pack --dry-run`; inspect the package contents.
-4. Regenerate examples with `node scripts/make-example.mjs`. Set `SITE_AUDIT_NOW` to an ISO date to override the fixed example timestamp.
+4. Regenerate examples with `node scripts/make-example.mjs` and the terminal image with `node scripts/make-demo.mjs` (port 8080 must be free). Set `SITE_AUDIT_NOW` to an ISO date to override the fixed example timestamp.
 5. Commit with `chore(release): vX.Y.Z`, replacing X.Y.Z with the actual version, then create the matching `vX.Y.Z` tag. Only the maintainer pushes the reviewed commit and tag.
 
 The release workflow checks the tag against both versions, runs lint and tests,

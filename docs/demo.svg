@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="630" viewBox="0 0 900 630" role="img" aria-labelledby="title description">
+  <title id="title">site-audit-lite terminal demo</title>
+  <desc id="description">Actual CLI output from a synthetic local site. The first 22 output lines show category scores and actionable findings.</desc>
+  <rect width="900" height="630" rx="14" fill="#101722"/>
+  <path d="M14 0h872a14 14 0 0 1 14 14v30H0V14A14 14 0 0 1 14 0" fill="#202b3b"/>
+  <circle cx="24" cy="22" r="6" fill="#ff5f57"/>
+  <circle cx="44" cy="22" r="6" fill="#febc2e"/>
+  <circle cx="64" cy="22" r="6" fill="#28c840"/>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14">
+    <text x="24" y="79" fill="#a5f3c3" xml:space="preserve">$ node bin/site-audit.js http://127.0.0.1:8080 --delay 0 --no-color</text>
+    <text x="24" y="102" fill="#dce4ee" xml:space="preserve"></text>
+    <text x="24" y="125" fill="#dce4ee" xml:space="preserve">Site audit: http://127.0.0.1:8080</text>
+    <text x="24" y="148" fill="#dce4ee" xml:space="preserve">Score 74/100 (C) across 5 pages</text>
+    <text x="24" y="171" fill="#dce4ee" xml:space="preserve"></text>
+    <text x="24" y="194" fill="#dce4ee" xml:space="preserve">  SEO             44  F</text>
+    <text x="24" y="217" fill="#dce4ee" xml:space="preserve">  Accessibility   87  B</text>
+    <text x="24" y="240" fill="#dce4ee" xml:space="preserve">  Security        80  B</text>
+    <text x="24" y="263" fill="#dce4ee" xml:space="preserve">  Performance     97  A</text>
+    <text x="24" y="286" fill="#dce4ee" xml:space="preserve">  Links           92  A</text>
+    <text x="24" y="309" fill="#dce4ee" xml:space="preserve"></text>
+    <text x="24" y="332" fill="#dce4ee" xml:space="preserve">6 errors, 10 warnings, 12 notices</text>
+    <text x="24" y="355" fill="#dce4ee" xml:space="preserve"></text>
+    <text x="24" y="378" fill="#fda4af" xml:space="preserve">ERROR   Images without alt text (a11y-img-alt-missing) - 1 affected</text>
+    <text x="24" y="401" fill="#fda4af" xml:space="preserve">ERROR   Page language is not declared (a11y-lang-missing) - 1 affected</text>
+    <text x="24" y="424" fill="#fda4af" xml:space="preserve">ERROR   Broken internal links (links-broken) - 1 affected</text>
+    <text x="24" y="447" fill="#fda4af" xml:space="preserve">ERROR   Broken images, scripts or stylesheets (links-broken-resource) - 1 affected</text>
+    <text x="24" y="470" fill="#fda4af" xml:space="preserve">ERROR   Page has no title (seo-title-missing) - 1 affected</text>
+    <text x="24" y="493" fill="#fda4af" xml:space="preserve">ERROR   Page has no viewport meta tag (seo-viewport-missing) - 4 affected</text>
+    <text x="24" y="516" fill="#fde68a" xml:space="preserve">WARNING Form fields without a visible label (heuristic) (a11y-form-label-missing) - 1 affected</text>
+    <text x="24" y="539" fill="#fde68a" xml:space="preserve">WARNING Links without readable text (a11y-link-text-empty) - 1 affected</text>
+    <text x="24" y="562" fill="#fde68a" xml:space="preserve">WARNING Pinch zoom is disabled (a11y-zoom-disabled) - 1 affected</text>
+    <text x="24" y="585" fill="#fde68a" xml:space="preserve">WARNING Large images (perf-large-image) - 1 affected</text>
+    <text x="24" y="608" fill="#fde68a" xml:space="preserve">WARNING Content-Security-Policy header missing (sec-csp) - 5 affected</text>
+  </g>
+</svg>

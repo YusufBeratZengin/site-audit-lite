@@ -1,60 +1,66 @@
 # site-audit-lite
 
-[![CI](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/YusufBeratZengin/site-audit-lite/actions/workflows/ci.yml) [![MIT lisansı](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Node.js ≥20](https://img.shields.io/badge/node-%3E%3D20-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/) [![npm sürümü](https://img.shields.io/npm/v/site-audit-lite.svg)](https://www.npmjs.com/package/site-audit-lite)
 
 [English](README.md) | [Türkçe](README.tr.md)
 
-Küçük işletme siteleri için hızlı ve neredeyse bağımlılıksız bir site sağlık denetleyicisi. Siteyi tarar; SEO temellerini, erişilebilirlik temellerini, güvenlik başlıklarını, performans ipuçlarını ve kırık bağlantıları kontrol eder, sonucu okunaklı bir HTML, Markdown veya JSON raporu olarak yazar.
+Küçük işletme siteleri için çalışma zamanı bağımlılığı olmayan, hızlı bir site denetim aracı.
 
-Kaynak koddan kurulum: `npm ci`. D?? a?a ??kmayan demo: `node scripts/make-example.mjs`.
+![Gerçek CLI çıktısı: beş sayfalık sentetik site 74/100 puan alıyor; bulgular önem derecesine göre listeleniyor](docs/demo.svg)
 
-Tam bir Lighthouse kurulumuyla uğraşmak ya da bir SaaS aracına ödeme yapmak istemeyen serbest çalışanlar ve site sahipleri için yazıldı. Her bulgunun bir kimliği, önem derecesi, tetikleyen kanıtı ve sade bir dille yazılmış çözüm önerisi vardır.
+[Hızlı başlangıç](#hızlı-başlangıç) · [Kullanım](#kullanım) · [Yapılandırma](#yapılandırma-ve-seçenekler) · [Kontroller](#neleri-kontrol-eder) · [SSS](#sık-sorulan-sorular-ve-sınırlar) · [Katkıda bulunma](#katkıda-bulunma)
 
-- Node.js 20 ve üzeri, ESM, yerleşik `fetch` üzerine kurulu.
-- Çalışma zamanı bağımlılığı yok.
-- `robots.txt` kurallarına uyar; sayfa, derinlik ve eşzamanlı istek sayısını sınırlar, istekler arasında bekler.
-- Satır içi CSS'li, açık ve koyu temalı, tek dosyalık HTML raporu.
+## Neden bu araç?
 
-## Demo
+- **Kolay kurulum:** Node.js 20 ve üzeri, yerleşik `fetch`; tarayıcı indirmesi veya çalışma zamanı bağımlılığı gerekmez.
+- **Açıklanabilir bulgular:** SEO, erişilebilirlik, güvenlik, performans ve bağlantılar için 44 kontrol; her bulguda kanıt ve çözüm önerisi.
+- **Raporlar sizin kontrolünüzde:** bağımsız HTML, Markdown ve JSON çıktıları; yerel işlem, robots.txt desteği ve CI için önceki raporla karşılaştırma.
 
-`node scripts/make-example.mjs` sentetik siteyi i?letim sisteminin se?ti?i yerel bir portta denetler. Tekrarlanabilirlik i?in kaydedilen raporda port 8080, s?reler s?f?r g?sterilir. Ger?ek ??kt?n?n ilk sat?rlar?:
+## Hızlı başlangıç
 
-```text
-Site audit: http://127.0.0.1:8080
-Score 74/100 (C) across 5 pages
-
-  SEO             44  F
-  Accessibility   87  B
-  Security        80  B
-  Performance     97  A
-  Links           92  A
-
-6 errors, 10 warnings, 12 notices
-```
-
-[HTML raporunu](examples/report.html) veya [Markdown raporunu](examples/report.md) inceleyin.
-
-## Kurulum
+Kendi sitenizi hazırlamadan, sentetik yerel site üzerinde tam bir demo çalıştırın:
 
 ```sh
 git clone https://github.com/YusufBeratZengin/site-audit-lite.git
 cd site-audit-lite
-npm install        # yalnızca geliştirme için (test ve lint)
-npm link           # isteğe bağlı: `site-audit` komutunu her yerden çalıştırır
+npm ci
+node scripts/make-demo.mjs
 ```
 
-Bağlamadan da çalıştırabilirsiniz: `node bin/site-audit.js http://127.0.0.1:8080`.
+Node.js 20 veya üzeri ve boş bir yerel 8080 portu gerekir. `npm ci` geliştirme araçlarını kurar; CLI için paket kurulumu gerekmez. Demo, gerçek CLI özetini yazdırır ve ilk 22 çıktı satırından `docs/demo.svg` dosyasını yeniden üretir. npm rozeti paket kayıt sistemini gösterir; paket yayımlanana kadar “package not found” görünebilir. Kaynak koddan kullanım bundan bağımsızdır.
+
+Kendi yerel siteniz için `node bin/site-audit.js http://127.0.0.1:8080` komutunu çalıştırın. `site-audit` komutunu her yerden kullanmak isterseniz `npm link` çalıştırabilirsiniz.
+
+## Demo
+
+Görseldeki komutu aynen çalıştırmak için önce bir terminalde sentetik siteyi başlatın:
+
+```sh
+node scripts/make-demo.mjs --serve
+```
+
+Başka bir terminalde, depo kök dizininden şu komutu çalıştırın:
+
+```sh
+node bin/site-audit.js http://127.0.0.1:8080 --delay 0 --no-color
+```
+
+Örnek sunucuyu Ctrl+C ile durdurun. Tam rapor örneklerini üretmek için `node scripts/make-example.mjs` çalıştırın; ardından `examples/report.html` veya `examples/report.md` dosyasını açın. Her iki demo betiği de sentetik veri kullanır; dışarıdaki sitelere istek göndermez.
 
 ## Kullanım
 
+Bu komutlar, 8080 portunda çalışan yerel bir site gerektirir; kendi sitenizi veya yukarıdaki demo sunucusunu kullanabilirsiniz.
+
 ```sh
-site-audit http://127.0.0.1:8080
-site-audit http://127.0.0.1:8080 --max-pages 20 --out report.html
-site-audit http://127.0.0.1:8080 --out report.md --out report.json
-site-audit http://127.0.0.1:8080 --fail-under 80 --quiet
+node bin/site-audit.js http://127.0.0.1:8080
+node bin/site-audit.js http://127.0.0.1:8080 --max-pages 20 --out report.html
+node bin/site-audit.js http://127.0.0.1:8080 --out report.md --out report.json
+node bin/site-audit.js http://127.0.0.1:8080 --fail-under 80 --quiet
 ```
 
-`example.com` gibi çıplak bir alan adı `http://127.0.0.1:8080` olarak kabul edilir.
+Protokol yazılmadan verilen alan adları HTTPS olarak kabul edilir. Yerel HTTP sunucuları için `http://` önekini açıkça yazın.
+
+## Yapılandırma ve seçenekler
 
 | Seçenek | Varsayılan | Anlamı |
 | --- | --- | --- |
@@ -67,14 +73,14 @@ site-audit http://127.0.0.1:8080 --fail-under 80 --quiet
 | `--out <dosya>` | yok | Rapor yazar. Biçim uzantıdan belirlenir (`.html`, `.md`, `.json`). Birden fazla kez verilebilir |
 | `--format <biçim>` | uzantıya göre | Tüm `--out` dosyaları için `html`, `md` veya `json` biçimini zorlar |
 | `--fail-under <n>` | yok | Genel puan `n` değerinin altındaysa 1 koduyla çıkar |
-| `--baseline <dosya>` | yok | ?nceki JSON raporuyla kimlik ve URL ?zerinden kar??la?t?r?r |
-| `--fail-on-new <?nem>` | yok | Yeni bulgu bu ?nem d?zeyinde veya ?zerindeyse 1 koduyla ??kar; `--baseline` gerekir (`error`, `warning`, `info`) |
-| `--allow-private` | kapal? | G?venilen hedeflerde ?zel adres engelini kald?r?r; origin s?n?r? korunur |
+| `--baseline <dosya>` | yok | Önceki JSON raporuyla kontrol kimliği ve etkilenen URL üzerinden karşılaştırır |
+| `--fail-on-new <önem>` | yok | Yeni bulgu bu önem düzeyinde veya üzerindeyse 1 koduyla çıkar; `--baseline` gerekir (`error`, `warning`, `info`) |
+| `--allow-private` | kapalı | Güvenilen hedeflerde özel adres engelini kaldırır; origin sınırı korunur |
 | `--verbose` | kapalı | Terminalde çözümleri, kanıtları ve ilerleme iletilerini gösterir |
 | `--quiet` | kapalı | Hata dışında hiçbir şey yazmaz |
 | `--no-color` | otomatik | ANSI renklerini kapatır |
 
-Çıkış kodları: `0` başarılı, `1` puan `--fail-under` değerinin altında, `2` kullanım hatası ya da site denetlenemedi.
+Çıkış kodları: `0` başarılı, `1` puan `--fail-under` değerinin altında veya yeni bulgular `--fail-on-new` eşiğini karşılıyor, `2` kullanım hatası ya da site denetlenemedi.
 
 ### Kütüphane olarak kullanım
 
@@ -94,8 +100,8 @@ const html = renderHtml(result);
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
-| `seo-hreflang-invalid` | warning | page | Hreflang dil kodu ge?ersiz veya sayfan?n kendisine referans yok |
-| `seo-title-too-generic` | warning | page | Home veya Untitled gibi genel bir ba?l?k |
+| `seo-hreflang-invalid` | warning | page | Hreflang dil kodu geçersiz veya sayfanın kendisine referans yok |
+| `seo-title-too-generic` | warning | page | Home veya Untitled gibi genel bir başlık |
 | `seo-title-missing` | error | page | Sayfanın başlığı yok |
 | `seo-title-length` | warning | page | Başlık 10 karakterden kısa ya da 60 karakterden uzun |
 | `seo-title-duplicate` | warning | site | Birkaç sayfa aynı başlığı paylaşıyor |
@@ -118,8 +124,8 @@ Bunlar temel ve sezgisel kontrollerdir; elle inceleme yapmanın ya da axe gibi e
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
-| `a11y-heading-order` | warning | page | Ba?l?k d?zeyleri atlan?yor veya ilk ba?l?k h1 de?il |
-| `a11y-button-name-missing` | error | page | D??menin eri?ilebilir ad? yok (sezgisel) |
+| `a11y-heading-order` | warning | page | Başlık düzeyleri atlanıyor veya ilk başlık h1 değil |
+| `a11y-button-name-missing` | error | page | Düğmenin erişilebilir adı yok (sezgisel) |
 | `a11y-lang-missing` | error | page | `<html>` öğesinde `lang` yok |
 | `a11y-img-alt-missing` | error | page | `alt` özniteliği olmayan görseller (boş `alt=""` kabul edilir) |
 | `a11y-form-label-missing` | warning | page | `<label>`, `aria-label`, `aria-labelledby` ya da `title` olmayan form alanları (sezgisel) |
@@ -130,7 +136,7 @@ Bunlar temel ve sezgisel kontrollerdir; elle inceleme yapmanın ya da axe gibi e
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
-| `sec-cookie-flags` | warning | page | Set-Cookie i?inde Secure, HttpOnly veya ge?erli SameSite eksik |
+| `sec-cookie-flags` | warning | page | Set-Cookie içinde Secure, HttpOnly veya geçerli SameSite eksik |
 | `sec-https` | error | site | Site düz HTTP ile sunuluyor |
 | `sec-https-redirect` | warning | site | `http://` adresi `https://` adresine yönlenmiyor |
 | `sec-hsts` | warning | page | `Strict-Transport-Security` yok |
@@ -146,7 +152,7 @@ Yerel geliştirme sunucusunu denetleyebilmeniz için döngü adresleri (`localho
 
 | Kimlik | Önem | Kapsam | Ne |
 | --- | --- | --- | --- |
-| `perf-no-cache-headers` | info | page | Ayn? sitedeki statik kaynakta Cache-Control ve Expires yok |
+| `perf-no-cache-headers` | info | page | Aynı sitedeki statik kaynakta Cache-Control ve Expires yok |
 | `perf-page-weight` | warning | page | HTML ile aynı siteden görseller, betikler ve stiller toplamı 1,5 MB'ı aşıyor |
 | `perf-html-size` | info | page | Yalnızca HTML 200 KB'ı aşıyor |
 | `perf-large-image` | warning | page | Aynı siteden 300 KB'ı aşan görsel |
@@ -167,19 +173,19 @@ Boyutlar, çözülmüş HTML gövdesinden ve aynı siteden kaynakların `Content
 
 Yalnızca aynı kaynaktaki (origin) bağlantılar denetlenir. Dış bağlantılara hiçbir zaman istek atılmaz.
 
-## ?rnekler
+## Örnekler
 
-`node scripts/make-example.mjs` yaln?zca `test/support/fixtures.js` i?indeki sentetik veriyi kullan?r; ger?ek bir siteye istek g?ndermez. [HTML](examples/report.html) ve [Markdown](examples/report.md) raporlar?n? yeniden ?retir. `SITE_AUDIT_NOW` ortam de?i?kenine ISO tarih vererek zaman? sabitleyebilirsiniz; varsay?lan ?rnek zaman? `2026-10-22T00:00:00Z` de?eridir.
+`node scripts/make-example.mjs` yalnızca `test/support/fixtures.js` içindeki sentetik veriyi kullanır; gerçek bir siteye istek göndermez. `examples/report.html` ve `examples/report.md` dosyalarını yeniden üretir. `SITE_AUDIT_NOW` ortam değişkenine ISO tarih vererek zamanı sabitleyebilirsiniz; varsayılan örnek zamanı `2026-10-22T00:00:00Z` değeridir. Kaydedilen raporlarda rastgele yerel port 8080, süreler sıfır olarak gösterilir. `node scripts/make-demo.mjs` ise terminal SVG'si için CLI çıktısını doğrudan yakalar.
 
-## Nas?l ?al???r
+## Nasıl çalışır
 
-?nce robots.txt okunur; ard?ndan sayfalar geni?lik ?ncelikli taran?r. Ayn? origin i?indeki ba?lant? ve kaynaklar kontrol edilir; katalogdaki kontroller kan?t ve ??z?m ?retir. Sayfa b?t?esi link kontrollerini tamamen s?n?rlamaz: ke?fedilen ayn? origin ba?lant?lar? ayr?ca HEAD ile kontrol edilebilir.
+Önce robots.txt okunur; ardından sayfalar genişlik öncelikli taranır. Aynı origin içindeki bağlantı ve kaynaklar kontrol edilir; katalogdaki kontroller kanıt ve çözüm üretir. Sayfa bütçesi bağlantı kontrollerini tamamen sınırlamaz: keşfedilen aynı origin bağlantıları ayrıca HEAD isteğiyle kontrol edilebilir.
 
 ## Puanlama
 
 Her kategori 100 puanla başlar. Başarısız her kontrol önem derecesine göre puan düşürür: hata 20, uyarı 8, bilgi 2. Sayfa kapsamlı bir kontrolün düşüşü, etkilediği sayfa oranıyla ölçeklenir (6 sayfanın 3'ü etkileniyorsa düşüşün yarısı uygulanır); site kapsamlı kontrol her zaman tam düşer. Kategori puanı 0 ile 100 arasında tutulur.
 
-Katalogdaki 44 kontrol?n tamam? bu kurala tabidir; yeni kontroller de tablolarda belirtilen ?nem derecesini ve sayfa kapsam?n? kullan?r.
+Katalogdaki 44 kontrolün tamamı bu kurala tabidir; her kontrol tablolarda belirtilen önem derecesini ve kapsamı kullanır.
 
 Genel puan, kategori puanlarının ağırlıklı ortalamasıdır:
 
@@ -200,25 +206,49 @@ Notlar: 90 ve üzeri A, 80 B, 70 C, 60 D, 60'ın altı F. Puanlar düzeltmeleri 
 - Markdown: aynı içerik; bir sorun kaydına ya da e-postaya yapıştırmak kolaydır.
 - JSON: tüm sonuç nesnesi (`scores`, `summary`, `pages`, `affected[].evidence` içeren `findings`).
 
-## Sınırlar
+`--baseline previous.json`, bulguları ve etkilenen URL'leri HTML ve Markdown raporlarında `new` (yeni), `fixed` (düzeltilmiş) veya `unchanged` (değişmemiş) olarak işaretler. Eşleştirme kontrol kimliği ve URL ile yapılır; yalnızca kanıtın değişmesi yeni bulgu sayılmaz. Bir kontrol hem yeni hem değişmemiş URL'ler içerebilir; bunlar ayrı ayrı işaretlenir. Düzeltilmiş bulgular güncel puanı etkilemez. `--fail-on-new error` yalnızca yeni hatalar varsa 1 koduyla çıkar. JSON karşılaştırmasında mevcut alanlara `status` ve `baseline` verileri eklenir.
 
-- Sayfalar tarayıcıyla değil, küçük ve hoşgörülü bir tarayıcıyla (scanner) ayrıştırılır. JavaScript ile sonradan eklenen içerik görülmez.
+## Sık sorulan sorular ve sınırlar
+
+### JavaScript çalıştırır mı, tam erişilebilirlik denetiminin yerini tutar mı?
+
+Hayır. Sunucudan gelen HTML'yi toleranslı bir ayrıştırıcıyla inceler. JavaScript ile oluşan içerik ve kapsamlı erişilebilirlik değerlendirmesi için tarayıcı tabanlı bir araç ve elle inceleme gerekir.
+
+### CI içinde kullanabilir miyim?
+
+Evet. `--out baseline.json` ile JSON raporu kaydedin; sonraki denetimi `--baseline baseline.json --fail-on-new error` ile karşılaştırın. Genel puan eşiği için `--fail-under 80` kullanın. Puan eşikten düşükse veya belirtilen önem düzeyinde yeni bulgu varsa çıkış kodu 1 olur.
+
+### Raporları dışarıya gönderir mi?
+
+Hayır. Denetim, hedef siteye ve aynı origin içindeki kaynaklarına HTTP istekleri gönderir. Siz paylaşmadıkça raporlar bilgisayarınızda kalır. Paylaşmadan önce URL'leri ve kanıtları gözden geçirin.
+
+### Sınırlar neler?
+
+- Başlangıç URL'si özel veya yerel değilse özel, döngü, link-local, localhost ve bilinen metadata adreslerine yönlendirmeler istek yapılmadan reddedilir. Yönlendirmedeki alan adlarının DNS adresleri de kontrol edilir. `--allow-private` seçeneğini yalnızca güvendiğiniz hedeflerde kullanın; özel veya yerel başlangıç adresleri özel hedeflere izin verir. Aynı sunucuda HTTP'den HTTPS'ye geçiş dışında farklı origin'e yönlendirme yapılmaz.
+- Bu önlemler ağ yalıtımı sağlamaz: DNS kontrolü ile bağlantı arasında DNS rebinding gerçekleşebilir. Güvenmediğiniz siteleri ağ erişimi kısıtlı bir ortamda denetleyin. Raporlar URL ve kanıt içerir; paylaşmadan önce inceleyin. Telemetri veya rapor yükleme yapılmaz.
+- 429/503 yanıtında geçerli ve en fazla 30 saniyelik `Retry-After` süresi bir kez beklenir; ikinci başarısız yanıttan sonra URL bırakılır. Daha uzun veya geçersiz sürelerde tekrar denenmez. HEAD isteği yalnızca 405/501 yanıtında GET ile tekrarlanır.
+- En fazla beş yönlendirme izlenir. Content-Type eksikse içerik HTML olarak ayrıştırılmaz. Gzip/Brotli dahil açılmış gövde 2 MiB ile sınırlıdır; kesilen sayfalar `pages[].truncated` ve rapor etiketiyle belirtilir. Bulgular eksik kalabilir.
+- Site haritası indekslerinde aynı origin içindeki alt haritalar bir düzey izlenir; sayı `maxPages` ile sınırlıdır. Haritadaki sayfa URL'leri tarama kuyruğuna eklenmez.
+- Hreflang dil kodu ve kendine referans, düğme adı ve başlık sırası kontrolleri sezgiseldir; bölge kayıtları, ARIA referans hedefleri ve görünürlük tam olarak doğrulanmaz. Çerez kontrolü, bilerek betiklere açık bırakılan çerezleri işaretleyebilir. Önbellek kontrolü başlığın varlığına bakar, politikanın doğruluğuna bakmaz.
+
+- Sayfalar küçük ve toleranslı bir ayrıştırıcıyla işlenir. JavaScript ile sonradan eklenen içerik görülmez.
 - Kontroller küçük siteler için sezgiseldir. Hepsini geçmek sitenin güvenli, erişilebilir ya da hızlı olduğunu kanıtlamaz.
 - `--max-pages`, 404 dönenler dahil tarama sırasındaki her sayfa isteğini sayar.
 
 ## Geliştirme
 
 ```sh
-npm install
-npm test       # node --test; yerel bir HTTP sunucusu kullanır, gerçek ağa çıkmaz
+npm ci
+npm test       # yerleşik kapsam raporu; yalnızca sentetik yerel HTTP sunucuları
 npm run lint
+npm run test:coverage  # Node 22.8+ veya 24: kaynak kodda en az %85 satır kapsamı
 ```
 
-Bkz. [CONTRIBUTING.md](CONTRIBUTING.md). Güvenlik bildirimleri için: [SECURITY.md](SECURITY.md).
+CI; Ubuntu ve Windows'ta Node 20, 22 ve 24, macOS'ta Node 24 ile çalışır. Bu JavaScript projesinde ayrı bir typecheck komutu bulunmuyor. Bkz. [CONTRIBUTING.md](CONTRIBUTING.md). Güvenlik bildirimleri için: [SECURITY.md](SECURITY.md).
 
-## Katk?da bulunma
+## Katkıda bulunma
 
-Kurulum, katk? kurallar? ve s?r?m ??karma i?in [CONTRIBUTING.md](CONTRIBUTING.md); davran?? kurallar? i?in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Kurulum, katkı kuralları ve sürüm çıkarma için [CONTRIBUTING.md](CONTRIBUTING.md); davranış kuralları için [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Lisans
 
